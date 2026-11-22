@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Disciplina y Gestión del Tiempo</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            obsidian: '#0f1115',
+            charcoal: '#181b21',
+            slateborder: '#2a2f3a',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      background-color: #0f1115;
+      color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* Personalización de barras de desplazamiento elegantes */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f1115;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2a2f3a;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3f4656;
+    }
+
+    /* Animación suave para celdas activas de hábitos */
+    .habit-cell {
+      transition: transform 0.12s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .habit-cell:active {
+      transform: scale(0.88);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#0f1115] text-gray-100 antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Barra de notificación flotante (Toast) -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden items-center gap-2.5 bg-[#181b21] border border-emerald-500/40 text-gray-100 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300">
+    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+    <span id="toast-message" class="text-sm font-medium">Guardado correctamente</span>
+  </div>
+
+  <!-- ENCABEZADO SUPERIOR -->
+  <header class="border-b border-[#2a2f3a] bg-[#181b21]/90 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <!-- Icono SVG de reloj/enfoque -->
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9"></circle>
+              <polyline points="12 7 12 12 15 15"></polyline>
+            </svg>
+          </div>
+          <h1 class="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
+            Sistema de Disciplina y Gestión del Tiempo
+          </h1>
+        </div>
+        <!-- Frase Motivacional -->
+        <p class="mt-1.5 text-xs sm:text-sm text-amber-400/90 font-medium italic flex items-center gap-1.5">
+          <svg class="w-4 h-4 shrink-0 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+          <span>"La disciplina es el puente entre tus metas y tus logros; cada hora intencional construye tu futuro."</span>
+        </p>
+      </div>
+
+      <!-- Controles Globales (Reloj en vivo y respaldo) -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <div class="px-3.5 py-2 rounded-xl bg-[#0f1115] border border-[#2a2f3a] flex items-center gap-2 text-xs sm:text-sm">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span id="live-clock" class="font-mono font-semibold text-gray-200">--:--:--</span>
+          <span id="live-date" class="text-gray-400 hidden sm:inline border-l border-[#2a2f3a] pl-2 capitalize">--</span>
+        </div>
+
+        <button onclick="exportData()" title="Descargar respaldo en JSON" class="px-3 py-2 rounded-xl bg-[#0f1115] hover:bg-[#232732] border border-[#2a2f3a] text-xs font-medium text-gray-300 flex items-center gap-1.5 transition cursor-pointer">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span>Respaldar</span>
+        </button>
+
+        <label title="Importar respaldo JSON" class="px-3 py-2 rounded-xl bg-[#0f1115] hover:bg-[#232732] border border-[#2a2f3a] text-xs font-medium text-gray-300 flex items-center gap-1.5 transition cursor-pointer">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          <span>Restaurar</span>
+          <input type="file" id="import-file" accept=".json" class="hidden" onchange="importData(event)" />
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL: PANTALLA DIVIDIDA (OPCIÓN A) -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 xl:grid-cols-12 gap-6">
+
+    <!-- PANEL IZQUIERDO (5 Columnas en pantallas grandes): PLANIFICADOR DE BLOQUES + POMODORO -->
+    <section class="xl:col-span-5 flex flex-col gap-5">
+
+      <!-- TARJETA: RELOJ TÉCNICA POMODORO PARA AUTOGESTIÓN -->
+      <div class="bg-[#181b21] border border-[#2a2f3a] rounded-2xl p-4 sm:p-5 shadow-xl relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="p-1.5 rounded-lg bg-amber-500/15 text-amber-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
+            <h2 class="text-sm sm:text-base font-bold text-white">Temporizador Pomodoro (Autogestión)</h2>
+          </div>
+
+          <!-- Selector de modo Pomodoro -->
+          <div class="flex items-center bg-[#0f1115] p-1 rounded-xl border border-[#2a2f3a] text-xs">
+            <button id="btn-mode-work" onclick="setPomodoroMode('work')" class="px-2.5 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition cursor-pointer">
+              Enfoque (25m)
+            </button>
+            <button id="btn-mode-short" onclick="setPomodoroMode('short')" class="px-2.5 py-1 rounded-lg font-medium text-gray-400 hover:text-white transition cursor-pointer">
+              Pausa (5m)
+            </button>
+            <button id="btn-mode-long" onclick="setPomodoroMode('long')" class="px-2.5 py-1 rounded-lg font-medium text-gray-400 hover:text-white transition cursor-pointer">
+              Larga (15m)
+            </button>
+          </div>
+        </div>
+
+        <!-- Tarea vinculada al Pomodoro -->
+        <div class="mb-4 flex items-center justify-between gap-2 bg-[#0f1115] border border-[#2a2f3a] rounded-xl px-3 py-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400 shrink-0">Actividad:</span>
+            <span id="pomodoro-task-label" class="text-xs sm:text-sm text-gray-300 truncate italic">
+              Selecciona el icono 🍅 en una hora o inicia libremente
+            </span>
+          </div>
+          <button onclick="clearPomodoroTask()" id="btn-clear-pomo-task" class="hidden text-gray-500 hover:text-rose-400 text-xs shrink-0 cursor-pointer" title="Desvincular actividad">
+            ✕
+          </button>
+        </div>
+
+        <!-- Display del reloj y controles -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-baseline gap-3">
+            <div id="pomodoro-display" class="text-4xl sm:text-5xl font-extrabold font-mono tracking-tight text-white">
+              25:00
+            </div>
+            <div class="text-xs text-gray-400">
+              Sesiones hoy: <span id="pomodoro-count" class="font-bold text-emerald-400 text-sm">0</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button id="btn-pomo-start" onclick="togglePomodoro()" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20 transition cursor-pointer">
+              <svg id="icon-pomo-play" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+              </svg>
+              <span id="text-pomo-start">Iniciar</span>
+            </button>
+            <button onclick="resetPomodoro()" class="px-3.5 py-2.5 rounded-xl bg-[#0f1115] hover:bg-[#232732] border border-[#2a2f3a] text-gray-300 font-medium text-xs sm:text-sm transition cursor-pointer" title="Reiniciar reloj">
+              Reiniciar
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de progreso del Pomodoro -->
+        <div class="w-full h-1.5 bg-[#0f1115] rounded-full overflow-hidden mt-4">
+          <div id="pomodoro-progress" class="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-500" style="width: 100%"></div>
+        </div>
+      </div>
+
+      <!-- TARJETA: PLANIFICADOR DE BLOQUES DE TIEMPO (6:00 AM - 10:00 PM) -->
+      <div class="bg-[#181b21] border border-[#2a2f3a] rounded-2xl p-4 sm:p-5 shadow-xl flex-1 flex flex-col">
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-[#2a2f3a]">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+              Planificador Diario (Time-Blocking)
+            </h2>
+            <p class="text-xs text-gray-400 mt-0.5">Bloques de 1 hora · 6:00 a.m. a 10:00 p.m.</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span id="day-progress-badge" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+              0 / 0 completadas
+            </span>
+            <button onclick="requestClearDay()" class="text-xs px-2.5 py-1.5 rounded-lg bg-[#0f1115] hover:bg-rose-950/50 text-gray-400 hover:text-rose-300 border border-[#2a2f3a] transition cursor-pointer" title="Limpiar todas las actividades del día">
+              Limpiar día
+            </button>
+          </div>
+        </div>
+
+        <!-- Contenedor con scroll de las horas -->
+        <div id="time-blocks-container" class="space-y-2 max-h-[620px] overflow-y-auto pr-1">
+          <!-- Las filas de 6:00 a 22:00 se generan dinámicamente con JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL DERECHO (7 Columnas en pantallas grandes): RASTREADOR DE HÁBITOS "NO ROMPAS LA CADENA" -->
+    <section class="xl:col-span-7 flex flex-col">
+      <div class="bg-[#181b21] border border-[#2a2f3a] rounded-2xl p-4 sm:p-5 shadow-xl flex-1 flex flex-col">
+
+        <!-- Cabecera del Rastreador de Hábitos -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#2a2f3a]">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <h2 class="text-base sm:text-lg font-bold text-white">Rastreador de Hábitos "No Rompas la Cadena"</h2>
+            </div>
+            <p class="text-xs text-gray-400 mt-0.5">Haz clic en cada día para iluminar tu progreso. Haz clic en el nombre de un hábito para editarlo.</p>
+          </div>
+
+          <!-- Navegación de Mes y Restaurar Ejemplos -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs sm:text-sm font-bold text-emerald-400">
+              Reto de 21 Días
+            </span>
+
+            <button onclick="requestResetCycle()" class="px-3 py-2 rounded-xl bg-[#0f1115] hover:bg-rose-950/40 border border-[#2a2f3a] hover:border-rose-500/40 text-xs font-medium text-gray-300 hover:text-rose-200 transition cursor-pointer" title="Limpiar marcas y reiniciar ciclo de 21 días">
+              Reiniciar ciclo 21d
+            </button>
+
+            <button onclick="requestResetHabits()" class="px-3 py-2 rounded-xl bg-[#0f1115] hover:bg-[#232732] border border-[#2a2f3a] text-xs font-medium text-gray-300 transition cursor-pointer" title="Volver a los 15 hábitos sugeridos">
+              Restaurar 15 ejemplos
+            </button>
+          </div>
+        </div>
+
+        <!-- BANNER / TARJETA DESTACADA DE MENSAJES MOTIVACIONALES POR RACHA O TROPIEZO -->
+        <div id="milestone-banner" class="hidden mb-4 rounded-2xl p-4 border shadow-lg transition-all duration-300 relative">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-start gap-3">
+              <div id="milestone-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0">
+                🔥
+              </div>
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span id="milestone-badge" class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md">
+                    Hito alcanzado
+                  </span>
+                  <span id="milestone-habit-name" class="text-xs font-semibold text-gray-400">
+                    Hábito
+                  </span>
+                </div>
+                <p id="milestone-text" class="mt-1.5 text-xs sm:text-sm font-semibold leading-relaxed text-white">
+                  Mensaje motivacional
+                </p>
+              </div>
+            </div>
+            <button onclick="closeMilestoneBanner()" class="text-gray-400 hover:text-white text-sm px-1.5 py-0.5 rounded-lg hover:bg-white/10 transition cursor-pointer" title="Cerrar mensaje">
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- Formulario para agregar nuevo hábito -->
+        <form onsubmit="addNewHabit(event)" class="flex gap-2 mb-4">
+          <input
+            type="text"
+            id="new-habit-input"
+            placeholder="Escribe un nuevo hábito de disciplina o autogestión (ej. Estudiar inglés 30 min)..."
+            maxlength="45"
+            class="flex-1 bg-[#0f1115] border border-[#2a2f3a] focus:border-emerald-500 focus:outline-none rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-gray-100 placeholder-gray-500 transition"
+          />
+          <button type="submit" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 transition shrink-0 cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Agregar</span>
+          </button>
+        </form>
+
+        <!-- Resumen rápido de cumplimiento del ciclo -->
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <div class="bg-[#0f1115] border border-[#2a2f3a] rounded-xl p-3">
+            <div class="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Hábitos Activos</div>
+            <div id="stat-total-habits" class="text-lg sm:text-xl font-bold text-white mt-0.5">15</div>
+          </div>
+          <div class="bg-[#0f1115] border border-[#2a2f3a] rounded-xl p-3">
+            <div class="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Checks (Ciclo 21d)</div>
+            <div id="stat-month-checks" class="text-lg sm:text-xl font-bold text-emerald-400 mt-0.5">0</div>
+          </div>
+          <div class="bg-[#0f1115] border border-[#2a2f3a] rounded-xl p-3">
+            <div class="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Mejor Racha Global</div>
+            <div id="stat-best-streak" class="text-lg sm:text-xl font-bold text-amber-400 mt-0.5">0 días</div>
+          </div>
+        </div>
+
+        <!-- Tabla / Cuadrícula 21 Días Responsiva -->
+        <div class="overflow-x-auto border border-[#2a2f3a] rounded-xl bg-[#0f1115] flex-1">
+          <table class="w-full border-collapse text-left">
+            <thead>
+              <tr id="habits-table-header" class="border-b border-[#2a2f3a] bg-[#14171d] text-[11px] font-semibold text-gray-400">
+                <!-- Cabecera dinámica con días D1..D21 -->
+              </tr>
+            </thead>
+            <tbody id="habits-table-body" class="divide-y divide-[#2a2f3a]/60 text-xs sm:text-sm">
+              <!-- Filas de los 15+ hábitos generadas dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Leyenda de colores -->
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-400">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded bg-emerald-500 inline-block shadow shadow-emerald-500/40"></span> Completado
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded bg-[#181b21] border border-[#2a2f3a] inline-block"></span> Pendiente
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded bg-rose-500/20 border border-rose-500/60 inline-block"></span> Día saltado (cadena rota)
+            </span>
+          </div>
+          <span>Tus cambios se guardan automáticamente en este navegador.</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL DE CONFIRMACIÓN PERSONALIZADO (Sin usar alert/confirm) -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="bg-[#181b21] border border-[#2a2f3a] rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <h3 id="modal-title" class="text-lg font-bold text-white mb-2">Confirmar acción</h3>
+      <p id="modal-desc" class="text-sm text-gray-300 mb-6">¿Estás seguro de continuar?</p>
+      <div class="flex justify-end gap-3">
+        <button onclick="closeConfirmModal()" class="px-4 py-2 rounded-xl bg-[#0f1115] hover:bg-[#232732] border border-[#2a2f3a] text-sm font-medium text-gray-300 transition cursor-pointer">
+          Cancelar
+        </button>
+        <button id="modal-confirm-btn" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-sm font-semibold text-white transition cursor-pointer">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIE DE PÁGINA CON FIRMA DE AUTORÍA -->
+  <footer class="border-t border-[#2a2f3a] bg-[#181b21] mt-8">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+      <p class="text-xs sm:text-sm font-medium text-gray-300">
+        Desarrollado como obsequio por <span class="text-emerald-400 font-semibold">Yury Marcela Galvis Parra</span> — Centro de Servicios Empresariales y Turísticos - SENA Regional Santander
+      </p>
+      <span class="text-[11px] text-gray-500">Herramienta de Productividad, Autogestión y Disciplina Personal</span>
+    </div>
+  </footer>
+
+  <!-- LÓGICA DE LA APLICACIÓN -->
+  <script>
+    // =========================================================================
+    // 1. ESTADO GLOBAL Y DATOS PRECARGADOS
+    // =========================================================================
+    const STORAGE_KEY = 'yury_disciplina_tiempo_21d_v2';
+    const CYCLE_DAYS = 21;
+
+    // 15 ejemplos precargados enfocados en disciplina, bienestar y autogestión
+    const DEFAULT_HABITS = [
+      { id: 'h1', name: 'Leer 20 minutos diarios', color: 'emerald' },
+      { id: 'h2', name: 'Ejercicio físico (30 min)', color: 'indigo' },
+      { id: 'h3', name: 'Sin redes sociales antes del mediodía', color: 'amber' },
+      { id: 'h4', name: 'Tomar 2 litros de agua', color: 'emerald' },
+      { id: 'h5', name: 'Planificar el día siguiente antes de dormir', color: 'indigo' },
+      { id: 'h6', name: 'Meditación o respiración consciente (10 min)', color: 'purple' },
+      { id: 'h7', name: 'Dormir 7-8 horas', color: 'indigo' },
+      { id: 'h8', name: 'Avanzar en proyecto de autogestión', color: 'amber' },
+      { id: 'h9', name: 'Alimentación saludable sin azúcares añadidos', color: 'rose' },
+      { id: 'h10', name: 'Ordenar espacio de trabajo (5 min)', color: 'indigo' },
+      { id: 'h11', name: 'Practicar gratitud (escribir 3 cosas)', color: 'amber' },
+      { id: 'h12', name: 'Aprender algo nuevo (15 min)', color: 'emerald' },
+      { id: 'h13', name: 'Desconexión digital 1 hora antes de dormir', color: 'purple' },
+      { id: 'h14', name: 'Revisar metas semanales', color: 'indigo' },
+      { id: 'h15', name: 'Caminata al aire libre / pausa activa', color: 'emerald' }
+    ];
+
+    // Mensajes motivacionales exactos según hitos o tropiezos
+    const STREAK_MESSAGES = {
+      day3: {
+        badge: '🔥 ¡3 Días Consecutivos!',
+        icon: '🌱',
+        style: 'bg-emerald-950/60 border-emerald-500/50',
+        badgeStyle: 'bg-emerald-500/20 text-emerald-300',
+        iconBg: 'bg-emerald-500/20 text-emerald-300',
+        text: 'Estas muy bien, Un hábito sencillo repetido cada día construye resultados reales con el tiempo'
+      },
+      day8: {
+        badge: '⚡ ¡8 Días Consecutivos!',
+        icon: '🚀',
+        style: 'bg-indigo-950/60 border-indigo-500/50',
+        badgeStyle: 'bg-indigo-500/20 text-indigo-300',
+        iconBg: 'bg-indigo-500/20 text-indigo-300',
+        text: 'Cada "sí" a tu meta es un voto por la persona en la que quieres convertirte'
+      },
+      day21: {
+        badge: '🏆 ¡21 Días Consecutivos Completados!',
+        icon: '👑',
+        style: 'bg-amber-950/60 border-amber-500/60',
+        badgeStyle: 'bg-amber-500/20 text-amber-300',
+        iconBg: 'bg-amber-500/20 text-amber-300',
+        text: '17 días cumpliendo tu palabra contigo mismo. Ya dejaste atrás el simple entusiasmo del inicio y estás construyendo disciplina real. ¡Sigue firme, un día más a la vez!'
+      },
+      break: {
+        badge: '💪 Tropiezo Detectado — Retoma el Ritmo',
+        icon: '🔄',
+        style: 'bg-rose-950/50 border-rose-500/50',
+        badgeStyle: 'bg-rose-500/20 text-rose-300',
+        iconBg: 'bg-rose-500/20 text-rose-300',
+        text: 'Tropezar es parte del proceso; levantarte y retomar el ritmo define tu progreso.'
+      }
+    };
+
+    // Categorías para el Planificador de Bloques de Tiempo
+    const CATEGORIES = {
+      enfoque: { label: 'Trabajo Profundo', badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40', dot: 'bg-indigo-500' },
+      autogestion: { label: 'Autogestión / Pomodoro', badge: 'bg-amber-500/20 text-amber-300 border-amber-500/40', dot: 'bg-amber-500' },
+      rutina: { label: 'Bienestar / Hábito', badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', dot: 'bg-emerald-500' },
+      descanso: { label: 'Descanso / Personal', badge: 'bg-purple-500/20 text-purple-300 border-purple-500/40', dot: 'bg-purple-500' }
+    };
+
+    const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 6:00 a 22:00 (6 a.m. a 10 p.m.)
+
+    let appState = {
+      schedule: {}, // { "6": { text: "", category: "enfoque", completed: false }, ... }
+      habits: JSON.parse(JSON.stringify(DEFAULT_HABITS)),
+      cycleLogs: {}, // { "h1": [1, 2, 3, ...] } para los 21 días
+      pomodoroSessionsToday: 0,
+      lastSessionDate: new Date().toDateString()
+    };
+
+    // Estado del Temporizador Pomodoro
+    let pomoState = {
+      mode: 'work', // 'work' | 'short' | 'long'
+      durations: { work: 25 * 60, short: 5 * 60, long: 15 * 60 },
+      remaining: 25 * 60,
+      isRunning: false,
+      intervalId: null,
+      linkedTask: ''
+    };
+
+    let pendingModalAction = null;
+
+    // =========================================================================
+    // 2. INICIALIZACIÓN Y PERSISTENCIA (localStorage)
+    // =========================================================================
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          appState = { ...appState, ...parsed };
+          if (!appState.cycleLogs || typeof appState.cycleLogs !== 'object') {
+            appState.cycleLogs = {};
+          }
+          // Reiniciar contador diario de pomodoros si cambió de día
+          const todayStr = new Date().toDateString();
+          if (appState.lastSessionDate !== todayStr) {
+            appState.pomodoroSessionsToday = 0;
+            appState.lastSessionDate = todayStr;
+            saveState();
+          }
+        }
+      } catch (e) {
+        console.error('Error cargando datos locales:', e);
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.error('Error guardando datos locales:', e);
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const msgEl = document.getElementById('toast-message');
+      msgEl.textContent = msg;
+      toast.classList.remove('hidden');
+      toast.classList.add('flex');
+      clearTimeout(window.toastTimeout);
+      window.toastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+        toast.classList.remove('flex');
+      }, 2800);
+    }
+
+    // =========================================================================
+    // 3. RELOJ EN VIVO Y LÍNEA DE TIEMPO
+    // =========================================================================
+    function updateLiveClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const dateStr = now.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+      document.getElementById('live-clock').textContent = timeStr;
+      document.getElementById('live-date').textContent = dateStr;
+    }
+
+    // =========================================================================
+    // 4. TEMPORIZADOR POMODORO (Con sonido Web Audio API sin archivos externos)
+    // =========================================================================
+    function playChime() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const notes = [523.25, 659.25, 783.99, 1046.5]; // Acorde Do mayor ascendente
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.14);
+          gain.gain.setValueAtTime(0.15, ctx.currentTime + idx * 0.14);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + idx * 0.14 + 0.6);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + idx * 0.14);
+          osc.stop(ctx.currentTime + idx * 0.14 + 0.65);
+        });
+      } catch (e) {
+        console.warn('Audio no soportado o bloqueado:', e);
+      }
+    }
+
+    function updatePomodoroUI() {
+      const mins = Math.floor(pomoState.remaining / 60).toString().padStart(2, '0');
+      const secs = (pomoState.remaining % 60).toString().padStart(2, '0');
+      document.getElementById('pomodoro-display').textContent = `${mins}:${secs}`;
+      document.getElementById('pomodoro-count').textContent = appState.pomodoroSessionsToday;
+
+      const total = pomoState.durations[pomoState.mode];
+      const pct = Math.max(0, Math.min(100, (pomoState.remaining / total) * 100));
+      document.getElementById('pomodoro-progress').style.width = `${pct}%`;
+
+      const startBtn = document.getElementById('btn-pomo-start');
+      const startText = document.getElementById('text-pomo-start');
+      if (pomoState.isRunning) {
+        startText.textContent = 'Pausar';
+        startBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+        startBtn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+      } else {
+        startText.textContent = 'Iniciar';
+        startBtn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+        startBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+      }
+
+      // Actualizar botones de modo
+      ['work', 'short', 'long'].forEach(m => {
+        const btn = document.getElementById(`btn-mode-${m}`);
+        if (m === pomoState.mode) {
+          btn.className = 'px-2.5 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition cursor-pointer';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-lg font-medium text-gray-400 hover:text-white transition cursor-pointer';
+        }
+      });
+    }
+
+    function setPomodoroMode(mode) {
+      if (pomoState.isRunning) {
+        clearInterval(pomoState.intervalId);
+        pomoState.isRunning = false;
+      }
+      pomoState.mode = mode;
+      pomoState.remaining = pomoState.durations[mode];
+      updatePomodoroUI();
+    }
+
+    function togglePomodoro() {
+      if (pomoState.isRunning) {
+        clearInterval(pomoState.intervalId);
+        pomoState.isRunning = false;
+      } else {
+        pomoState.isRunning = true;
+        pomoState.intervalId = setInterval(() => {
+          if (pomoState.remaining > 0) {
+            pomoState.remaining--;
+            updatePomodoroUI();
+          } else {
+            clearInterval(pomoState.intervalId);
+            pomoState.isRunning = false;
+            playChime();
+            if (pomoState.mode === 'work') {
+              appState.pomodoroSessionsToday++;
+              saveState();
+              showToast('¡Bloque Pomodoro completado! Tómate un descanso.');
+              setPomodoroMode('short');
+            } else {
+              showToast('Descanso finalizado. ¡Listo para enfocarte!');
+              setPomodoroMode('work');
+            }
+          }
+        }, 1000);
+      }
+      updatePomodoroUI();
+    }
+
+    function resetPomodoro() {
+      clearInterval(pomoState.intervalId);
+      pomoState.isRunning = false;
+      pomoState.remaining = pomoState.durations[pomoState.mode];
+      updatePomodoroUI();
+    }
+
+    function linkTaskToPomodoro(hour) {
+      const item = appState.schedule[hour] || {};
+      const hourLabel = formatHour(hour);
+      const taskName = item.text && item.text.trim() !== ''
+        ? `${hourLabel} - ${item.text.trim()}`
+        : `Bloque de autogestión (${hourLabel})`;
+
+      pomoState.linkedTask = taskName;
+      const labelEl = document.getElementById('pomodoro-task-label');
+      labelEl.textContent = taskName;
+      labelEl.classList.remove('italic', 'text-gray-300');
+      labelEl.classList.add('text-amber-300', 'font-semibold');
+      document.getElementById('btn-clear-pomo-task').classList.remove('hidden');
+
+      setPomodoroMode('work');
+      showToast(`Actividad cargada en Pomodoro: ${taskName}`);
+    }
+
+    function clearPomodoroTask() {
+      pomoState.linkedTask = '';
+      const labelEl = document.getElementById('pomodoro-task-label');
+      labelEl.textContent = 'Selecciona el icono 🍅 en una hora o inicia libremente';
+      labelEl.classList.add('italic', 'text-gray-300');
+      labelEl.classList.remove('text-amber-300', 'font-semibold');
+      document.getElementById('btn-clear-pomo-task').classList.add('hidden');
+    }
+
+    // =========================================================================
+    // 5. PLANIFICADOR DE BLOQUES DE TIEMPO (6:00 a.m. - 10:00 p.m.)
+    // =========================================================================
+    function formatHour(h) {
+      const suffix = h >= 12 ? 'p.m.' : 'a.m.';
+      const hour12 = h > 12 ? h - 12 : h;
+      return `${hour12.toString().padStart(2, '0')}:00 ${suffix}`;
+    }
+
+    function renderTimeBlocks() {
+      const container = document.getElementById('time-blocks-container');
+      const currentHour = new Date().getHours();
+      container.innerHTML = '';
+
+      let totalAssigned = 0;
+      let totalCompleted = 0;
+
+      HOURS.forEach(hour => {
+        const entry = appState.schedule[hour] || { text: '', category: 'enfoque', completed: false };
+        if (entry.text && entry.text.trim() !== '') {
+          totalAssigned++;
+          if (entry.completed) totalCompleted++;
+        }
+
+        const isCurrentHour = hour === currentHour;
+        const catInfo = CATEGORIES[entry.category] || CATEGORIES.enfoque;
+
+        const row = document.createElement('div');
+        row.className = `group flex items-center gap-2 p-2 rounded-xl border transition ${
+          isCurrentHour
+            ? 'bg-indigo-950/30 border-indigo-500/60 shadow-md shadow-indigo-500/10'
+            : 'bg-[#0f1115] border-[#2a2f3a] hover:border-gray-600'
+        }`;
+
+        row.innerHTML = `
+          <!-- Hora -->
+          <div class="w-20 shrink-0 flex flex-col">
+            <span class="text-xs font-mono font-bold ${isCurrentHour ? 'text-indigo-400' : 'text-gray-400'}">
+              ${formatHour(hour)}
+            </span>
+            ${isCurrentHour ? '<span class="text-[10px] font-semibold text-emerald-400">● Ahora</span>' : ''}
+          </div>
+
+          <!-- Checkbox de completado -->
+          <button
+            onclick="toggleBlockComplete(${hour})"
+            title="Marcar bloque como completado"
+            class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition cursor-pointer ${
+              entry.completed
+                ? 'bg-emerald-500 border-emerald-500 text-white'
+                : 'border-gray-600 hover:border-emerald-400 text-transparent'
+            }"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+
+          <!-- Campo de texto de la actividad -->
+          <input
+            type="text"
+            value="${escapeHtml(entry.text)}"
+            onchange="updateBlockText(${hour}, this.value)"
+            placeholder="Asignar actividad o autogestión..."
+            class="flex-1 min-w-0 bg-transparent text-xs sm:text-sm focus:outline-none placeholder-gray-600 ${
+              entry.completed ? 'line-through text-gray-500' : 'text-gray-100'
+            }"
+          />
+
+          <!-- Selector de categoría compacto -->
+          <select
+            onchange="updateBlockCategory(${hour}, this.value)"
+            title="Tipo de actividad"
+            class="hidden sm:block text-[11px] font-medium px-2 py-1 rounded-lg border bg-[#181b21] focus:outline-none cursor-pointer ${catInfo.badge}"
+          >
+            <option value="enfoque" ${entry.category === 'enfoque' ? 'selected' : ''}>Trabajo Profundo</option>
+            <option value="autogestion" ${entry.category === 'autogestion' ? 'selected' : ''}>Autogestión</option>
+            <option value="rutina" ${entry.category === 'rutina' ? 'selected' : ''}>Bienestar</option>
+            <option value="descanso" ${entry.category === 'descanso' ? 'selected' : ''}>Descanso</option>
+          </select>
+
+          <!-- Botón activar Pomodoro para este bloque -->
+          <button
+            onclick="linkTaskToPomodoro(${hour})"
+            title="Trabajar esta actividad con Técnica Pomodoro"
+            class="px-2 py-1 rounded-lg bg-[#181b21] hover:bg-amber-500/20 border border-[#2a2f3a] hover:border-amber-500/50 text-xs transition shrink-0 cursor-pointer"
+          >
+            🍅
+          </button>
+        `;
+
+        container.appendChild(row);
+      });
+
+      document.getElementById('day-progress-badge').textContent = `${totalCompleted} / ${totalAssigned} completadas`;
+    }
+
+    function updateBlockText(hour, value) {
+      if (!appState.schedule[hour]) {
+        appState.schedule[hour] = { text: '', category: 'enfoque', completed: false };
+      }
+      appState.schedule[hour].text = value;
+      saveState();
+      renderTimeBlocks();
+    }
+
+    function updateBlockCategory(hour, category) {
+      if (!appState.schedule[hour]) {
+        appState.schedule[hour] = { text: '', category: 'enfoque', completed: false };
+      }
+      appState.schedule[hour].category = category;
+      saveState();
+      renderTimeBlocks();
+    }
+
+    function toggleBlockComplete(hour) {
+      if (!appState.schedule[hour]) {
+        appState.schedule[hour] = { text: '', category: 'enfoque', completed: false };
+      }
+      appState.schedule[hour].completed = !appState.schedule[hour].completed;
+      saveState();
+      renderTimeBlocks();
+    }
+
+    function requestClearDay() {
+      openConfirmModal(
+        'Limpiar planificación del día',
+        '¿Deseas borrar todas las actividades escritas en los bloques de 6:00 a.m. a 10:00 p.m. para iniciar un día nuevo?',
+        () => {
+          appState.schedule = {};
+          saveState();
+          renderTimeBlocks();
+          showToast('Planificador diario reiniciado');
+        }
+      );
+    }
+
+    // =========================================================================
+    // 6. RASTREADOR DE HÁBITOS "NO ROMPAS LA CADENA" (RETO DE 21 DÍAS)
+    // =========================================================================
+    function showMilestoneBanner(type, habitName) {
+      const config = STREAK_MESSAGES[type];
+      if (!config) return;
+
+      const banner = document.getElementById('milestone-banner');
+      const iconEl = document.getElementById('milestone-icon');
+      const badgeEl = document.getElementById('milestone-badge');
+      const habitEl = document.getElementById('milestone-habit-name');
+      const textEl = document.getElementById('milestone-text');
+
+      banner.className = `mb-4 rounded-2xl p-4 border shadow-xl transition-all duration-300 relative ${config.style}`;
+      iconEl.className = `w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${config.iconBg}`;
+      iconEl.textContent = config.icon;
+
+      badgeEl.className = `text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${config.badgeStyle}`;
+      badgeEl.textContent = config.badge;
+
+      habitEl.textContent = `Hábito: "${habitName}"`;
+      textEl.textContent = config.text;
+
+      banner.classList.remove('hidden');
+      showToast(config.badge);
+    }
+
+    function closeMilestoneBanner() {
+      document.getElementById('milestone-banner').classList.add('hidden');
+    }
+
+    function analyzeHabitCycle(habitId) {
+      const rawDays = appState.cycleLogs[habitId] || [];
+      const sortedDays = [...new Set(rawDays)].filter(d => d >= 1 && d <= CYCLE_DAYS).sort((a, b) => a - b);
+      const setDays = new Set(sortedDays);
+
+      // Calcular mejor racha del ciclo de 21 días
+      let best = 0;
+      let temp = 0;
+      for (let d = 1; d <= CYCLE_DAYS; d++) {
+        if (setDays.has(d)) {
+          temp++;
+          if (temp > best) best = temp;
+        } else {
+          temp = 0;
+        }
+      }
+
+      // Calcular racha actual continua hacia atrás desde el último día marcado
+      let current = 0;
+      let hasGapBeforeLast = false;
+      const skippedDays = new Set();
+
+      if (sortedDays.length > 0) {
+        const lastMarkedDay = sortedDays[sortedDays.length - 1];
+        let cursor = lastMarkedDay;
+        while (cursor >= 1 && setDays.has(cursor)) {
+          current++;
+          cursor--;
+        }
+
+        // Detectar días vacíos (huecos/tropiezos) entre el primer día marcado y el último día marcado
+        const firstMarkedDay = sortedDays[0];
+        for (let d = firstMarkedDay; d < lastMarkedDay; d++) {
+          if (!setDays.has(d)) {
+            hasGapBeforeLast = true;
+            skippedDays.add(d);
+          }
+        }
+      }
+
+      return {
+        current,
+        best,
+        total: setDays.size,
+        hasGapBeforeLast,
+        skippedDays,
+        setDays
+      };
+    }
+
+    function renderHabitsTracker() {
+      // Renderizar cabecera de días (D1 a D21)
+      const thead = document.getElementById('habits-table-header');
+      let headerHTML = `
+        <th class="sticky left-0 z-20 bg-[#14171d] px-3 py-2.5 min-w-[210px] sm:min-w-[240px] border-r border-[#2a2f3a] text-gray-300">
+          Hábito / Disciplina (Editable)
+        </th>
+      `;
+      for (let d = 1; d <= CYCLE_DAYS; d++) {
+        const isMilestoneCol = d === 3 || d === 8 || d === 21;
+        headerHTML += `
+          <th class="px-1 py-2 text-center min-w-[32px] ${isMilestoneCol ? 'text-amber-400 font-extrabold bg-amber-500/10' : ''}" title="${isMilestoneCol ? `Meta de ${d} días consecutivos` : `Día ${d}`}">
+            D${d}
+          </th>
+        `;
+      }
+      headerHTML += `
+        <th class="px-2.5 py-2 text-center border-l border-[#2a2f3a] text-emerald-400" title="Racha actual consecutiva">🔥 Racha</th>
+        <th class="px-2.5 py-2 text-center text-amber-400" title="Racha máxima del ciclo">🏆 Máx</th>
+      `;
+      thead.innerHTML = headerHTML;
+
+      // Renderizar filas de hábitos
+      const tbody = document.getElementById('habits-table-body');
+      tbody.innerHTML = '';
+
+      let totalCycleChecks = 0;
+      let globalBestStreak = 0;
+
+      const colorClasses = {
+        emerald: 'bg-emerald-500 border-emerald-400 shadow-emerald-500/30',
+        indigo: 'bg-indigo-500 border-indigo-400 shadow-indigo-500/30',
+        amber: 'bg-amber-500 border-amber-400 shadow-amber-500/30',
+        purple: 'bg-purple-500 border-purple-400 shadow-purple-500/30',
+        rose: 'bg-rose-500 border-rose-400 shadow-rose-500/30'
+      };
+
+      appState.habits.forEach((habit, index) => {
+        const stats = analyzeHabitCycle(habit.id);
+
+        totalCycleChecks += stats.total;
+        if (stats.best > globalBestStreak) globalBestStreak = stats.best;
+
+        const activeBg = colorClasses[habit.color] || colorClasses.emerald;
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-[#181b21]/80 transition group';
+
+        let rowHTML = `
+          <td class="sticky left-0 z-10 bg-[#0f1115] group-hover:bg-[#161920] px-3 py-2 border-r border-[#2a2f3a]">
+            <div class="flex items-center justify-between gap-1.5">
+              <span class="text-[11px] font-mono text-gray-500 w-4 shrink-0">${index + 1}.</span>
+              <input
+                type="text"
+                value="${escapeHtml(habit.name)}"
+                onchange="editHabitName('${habit.id}', this.value)"
+                title="Haz clic para editar el nombre de este hábito"
+                class="flex-1 min-w-0 bg-transparent text-xs font-medium text-gray-200 focus:text-white focus:bg-[#181b21] focus:px-1.5 focus:py-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 truncate"
+              />
+              <button
+                onclick="deleteHabit('${habit.id}')"
+                title="Eliminar hábito"
+                class="opacity-40 group-hover:opacity-100 text-gray-500 hover:text-rose-400 text-xs px-1 transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          </td>
+        `;
+
+        for (let d = 1; d <= CYCLE_DAYS; d++) {
+          const isChecked = stats.setDays.has(d);
+          const isSkipped = !isChecked && stats.skippedDays.has(d);
+          const isMilestoneCol = d === 3 || d === 8 || d === 21;
+
+          rowHTML += `
+            <td class="p-0.5 text-center ${isMilestoneCol ? 'bg-amber-500/5' : ''}">
+              <button
+                onclick="toggleHabitDay('${habit.id}', ${d})"
+                aria-label="Día ${d} - ${escapeHtml(habit.name)}"
+                title="${isSkipped ? `Día ${d} saltado (rompe la cadena)` : `Día ${d}`}"
+                class="habit-cell w-6 h-6 rounded-md border mx-auto flex items-center justify-center cursor-pointer ${
+                  isChecked
+                    ? `${activeBg} text-white shadow-sm`
+                    : isSkipped
+                      ? 'bg-rose-500/15 border-rose-500/60 hover:border-rose-400 text-rose-400'
+                      : isMilestoneCol
+                        ? 'bg-[#181b21] border-amber-500/40 hover:border-amber-400'
+                        : 'bg-[#181b21] border-[#2a2f3a] hover:border-gray-500'
+                }"
+              >
+                ${
+                  isChecked
+                    ? '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'
+                    : isSkipped
+                      ? '<span class="text-[10px] font-bold">•</span>'
+                      : ''
+                }
+              </button>
+            </td>
+          `;
+        }
+
+        rowHTML += `
+          <td class="px-2 py-2 text-center border-l border-[#2a2f3a] font-mono text-xs font-bold ${stats.current > 0 ? 'text-emerald-400' : 'text-gray-500'}">
+            ${stats.current}d
+          </td>
+          <td class="px-2 py-2 text-center font-mono text-xs font-bold ${stats.best > 0 ? 'text-amber-400' : 'text-gray-500'}">
+            ${stats.best}d
+          </td>
+        `;
+
+        tr.innerHTML = rowHTML;
+        tbody.appendChild(tr);
+      });
+
+      // Actualizar métricas superiores
+      document.getElementById('stat-total-habits').textContent = appState.habits.length;
+      document.getElementById('stat-month-checks').textContent = totalCycleChecks;
+      document.getElementById('stat-best-streak').textContent = `${globalBestStreak} días`;
+    }
+
+    function toggleHabitDay(habitId, day) {
+      if (!appState.cycleLogs[habitId]) {
+        appState.cycleLogs[habitId] = [];
+      }
+
+      const habit = appState.habits.find(h => h.id === habitId);
+      const habitName = habit ? habit.name : 'Hábito';
+      const prevStats = analyzeHabitCycle(habitId);
+
+      const list = appState.cycleLogs[habitId];
+      const idx = list.indexOf(day);
+      const wasChecked = idx > -1;
+
+      if (wasChecked) {
+        list.splice(idx, 1);
+      } else {
+        list.push(day);
+      }
+
+      const newStats = analyzeHabitCycle(habitId);
+      saveState();
+      renderHabitsTracker();
+
+      // Evaluación de mensajes dinámicos según racha o ruptura de cadena
+      if (!wasChecked) {
+        // El usuario marcó un día
+        if (newStats.current === 21) {
+          showMilestoneBanner('day21', habitName);
+        } else if (newStats.current === 8) {
+          showMilestoneBanner('day8', habitName);
+        } else if (newStats.current === 3) {
+          showMilestoneBanner('day3', habitName);
+        } else if (newStats.hasGapBeforeLast && newStats.skippedDays.size > prevStats.skippedDays.size) {
+          // Marcó un día saltándose uno o más días intermedios (rompió la continuidad)
+          showMilestoneBanner('break', habitName);
+        }
+      } else {
+        // El usuario desmarcó un día: si rompió una cadena existente o dejó un hueco
+        if (prevStats.total >= 2 && (newStats.hasGapBeforeLast || newStats.current < prevStats.current)) {
+          showMilestoneBanner('break', habitName);
+        }
+      }
+    }
+
+    function editHabitName(habitId, newName) {
+      const trimmed = newName.trim();
+      if (!trimmed) {
+        renderHabitsTracker();
+        return;
+      }
+      const habit = appState.habits.find(h => h.id === habitId);
+      if (habit && habit.name !== trimmed) {
+        habit.name = trimmed;
+        saveState();
+        showToast('Nombre del hábito actualizado');
+      }
+    }
+
+    function addNewHabit(event) {
+      event.preventDefault();
+      const input = document.getElementById('new-habit-input');
+      const name = input.value.trim();
+      if (!name) return;
+
+      const palette = ['emerald', 'indigo', 'amber', 'purple', 'rose'];
+      const color = palette[appState.habits.length % palette.length];
+
+      appState.habits.push({
+        id: 'h_' + Date.now(),
+        name,
+        color
+      });
+
+      input.value = '';
+      saveState();
+      renderHabitsTracker();
+      showToast('Nuevo hábito agregado a tu cadena');
+    }
+
+    function deleteHabit(habitId) {
+      openConfirmModal(
+        'Eliminar hábito',
+        '¿Deseas quitar este hábito de tu lista? Podrás agregar otros en cualquier momento.',
+        () => {
+          appState.habits = appState.habits.filter(h => h.id !== habitId);
+          delete appState.cycleLogs[habitId];
+          saveState();
+          renderHabitsTracker();
+          showToast('Hábito eliminado');
+        }
+      );
+    }
+
+    function requestResetCycle() {
+      openConfirmModal(
+        'Reiniciar ciclo de 21 días',
+        '¿Deseas limpiar todas las casillas marcadas en los 21 días para iniciar un nuevo reto desde cero? Tus hábitos personalizados se conservarán.',
+        () => {
+          appState.cycleLogs = {};
+          saveState();
+          closeMilestoneBanner();
+          renderHabitsTracker();
+          showToast('Ciclo de 21 días reiniciado');
+        }
+      );
+    }
+
+    function requestResetHabits() {
+      openConfirmModal(
+        'Restaurar los 15 hábitos sugeridos',
+        'Se cargarán nuevamente los 15 hábitos de ejemplo recomendados (Leer, Ejercicio, Autogestión, etc.).',
+        () => {
+          appState.habits = JSON.parse(JSON.stringify(DEFAULT_HABITS));
+          saveState();
+          renderHabitsTracker();
+          showToast('15 hábitos recomendados restaurados');
+        }
+      );
+    }
+
+    // =========================================================================
+    // 7. RESPALDO (EXPORTAR / IMPORTAR JSON) Y MODAL
+    // =========================================================================
+    function exportData() {
+      const dataStr = JSON.stringify(appState, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `disciplina_y_tiempo_${dateStamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Respaldo descargado correctamente');
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (imported && typeof imported === 'object' && Array.isArray(imported.habits)) {
+            appState = { ...appState, ...imported };
+            saveState();
+            renderTimeBlocks();
+            renderHabitsTracker();
+            updatePomodoroUI();
+            showToast('Datos restaurados con éxito');
+          } else {
+            showToast('El archivo no tiene un formato válido');
+          }
+        } catch (err) {
+          showToast('Error al leer el archivo JSON');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function openConfirmModal(title, desc, onConfirm) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-desc').textContent = desc;
+      pendingModalAction = onConfirm;
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeConfirmModal() {
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      pendingModalAction = null;
+    }
+
+    document.getElementById('modal-confirm-btn').addEventListener('click', () => {
+      if (typeof pendingModalAction === 'function') {
+        pendingModalAction();
+      }
+      closeConfirmModal();
+    });
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // =========================================================================
+    // 8. ARRANQUE DE LA APLICACIÓN
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      updateLiveClock();
+      setInterval(updateLiveClock, 1000);
+      updatePomodoroUI();
+      renderTimeBlocks();
+      renderHabitsTracker();
+    });
+  </script>
+</body>
+</html>
